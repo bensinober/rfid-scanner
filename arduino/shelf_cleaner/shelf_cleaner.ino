@@ -67,7 +67,7 @@ const char* ssid_pwd(const char* ssid) {
 
 char* _host     = "192.168.0.2";
 int   _port     = 8081;
-char* _url      = "/api/spore/hub/feig/";
+char* _url      = "/api/spore/hub/scanner";
 
 const char* host() {
 //  if (WiFi.SSID().equals("hovedbib")) return HOVEDBIB_HOST;
@@ -153,7 +153,7 @@ void setup() {
     Serial.println("Can't find the RFID reader");
     toneKO();
     display.clearDisplay();
-    display.setTextSize(2);
+    display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0,0);
     display.println("NO RFID MODULE");
@@ -167,6 +167,7 @@ void setup() {
 
 long display_expire = 0;
 int display_level = 0;
+
 void loop() {
   delay(5);
   if (shelf_expire==0) {
@@ -204,6 +205,7 @@ void loop() {
   int i;
   for (i=0; i<100; i++) {
     int r = rfid_req(inventory, out);
+    //SERIALHEXDUMP(out, r);
     if (r<8) break;
 
     // current tag needs to be written
@@ -520,7 +522,7 @@ void _send_queue() {
     client.print(String("POST ") + url() + " HTTP/1.0\r\n" +
                  "Host: " + hhost() + "\r\n" + 
                  "Content-Length: "+ (pos-_queue) +"\r\n" +
-                 "Content-Type: application/json; charset=utf-8\r\n" +
+                 "Content-Type: application/octet-stream\r\n" +
                  "Connection: close\r\n\r\n");
 
     // HEAD
