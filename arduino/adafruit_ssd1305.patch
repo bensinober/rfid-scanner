@@ -18,7 +18,7 @@ index c8f212e..ad73342 100644
    if (SSD1305_LCDHEIGHT == 64) page = 0;
 -  if (SSD1305_LCDHEIGHT == 32) page = 4;
 +  if (SSD1305_LCDHEIGHT == 32) page = 0;
- 
+
    for(; page<8; page++)
    {
 diff --git a/Adafruit_SSD1305.h b/Adafruit_SSD1305.h
@@ -27,12 +27,12 @@ index 96c7127..196873a 100644
 +++ b/Adafruit_SSD1305.h
 @@ -44,8 +44,8 @@ All text above, and the splash screen must be included in any redistribution
      appropriate size
- 
+
      -----------------------------------------------------------------------*/
 -//#define SSD1305_128_32
 -#define SSD1305_128_64
 +#define SSD1305_128_32
 +//#define SSD1305_128_64
  /*=========================================================================*/
- 
+
  #if defined SSD1305_128_64 && defined SSD1305_128_32
