@@ -3,7 +3,7 @@ use warnings;
 use Data::Dumper;
 
 use lib 'lib/';
-use Spore::Utils;
+#use Spore::Utils;
 use LWP::UserAgent;
 use HTTP::Request;
 
@@ -38,9 +38,9 @@ for (split /\n/, $package) {
     }
 }
 
-print STDERR Spore::Utils::hexdump($raw);
+#print STDERR Spore::Utils::hexdump($raw);
 
-my $req = HTTP::Request->new(POST => 'http://127.0.0.1:5000/arduino/', [], $raw);
+my $req = HTTP::Request->new(POST => 'http://127.0.0.1:8081/api/spore/hub/scanner', ["Content-Type" => "application/octet-stream"], $raw);
 my $res = $ua->request($req);
 
-print Dumper($res);
+print Dumper($res->content);
