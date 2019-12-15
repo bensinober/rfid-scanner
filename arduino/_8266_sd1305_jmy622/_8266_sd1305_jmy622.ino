@@ -71,7 +71,7 @@ inline void shelf_reset() {
 int state = 1; // 0 idle, 1 Inventory, 2 Checkin
 long epoch = 0;
 
-void checkin() {
+void ICACHE_RAM_ATTR checkin () { // interrupts need to reside in IRAM since esp8266 v2.6.0
   long now = millis();
   idle_after = now+1000*IDLE_TIME; // extends the idle time
   display_expire = 0; // clear the display
