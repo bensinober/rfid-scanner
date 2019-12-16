@@ -523,6 +523,7 @@ void _send_queue() {
                  "Host: " + hhost() + "\r\n" + 
                  "Content-Length: "+ (pos-_queue) +"\r\n" +
                  "Content-Type: application/octet-stream\r\n" +
+                 "Accept: application/octet-stream\r\n" +
                  "Connection: close\r\n\r\n");
 
     // HEAD

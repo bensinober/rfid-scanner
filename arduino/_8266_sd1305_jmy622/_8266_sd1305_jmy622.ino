@@ -638,6 +638,8 @@ int wifi_send() {
                "Host: " + host() + "\r\n" + 
                "X-Scanner-Ver: "+__DATE__+" "+__TIME__+"\r\n" +
                "Content-Length: "+ (len) +"\r\n" +
+               "Content-Type: application/octet-stream\r\n" +
+               "Accept: application/octet-stream\r\n" +
                "Connection: close\r\n\r\n");
 
 //  Serial.println("SENDING:");
