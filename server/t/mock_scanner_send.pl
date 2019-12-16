@@ -21,8 +21,8 @@ my $package = <<'EOD';
  20: 00 00 00 00
 
   0: E0 04 01 50 5A 89 BD E3  00 24
-  0: 11 02 02 30 33 30 31 30  30 33 34 38 31 35 30 30  "...0301003481500"
- 10: 33 00 00 38 02 4E 4F 30  32 30 33 30 30 30 30 00  "3..8.NO02030000."
+  0: 11 02 02 33 30 31 31 39  31 31 36 38 31 38 37 34  "...3011911681874"
+ 10: 39 00 00 95 F1 4E 4F 30  32 30 33 30 30 30 30 00  "9..8.NO02030000."
  20: 00 00 00 00                                       "...."
 
 
@@ -37,10 +37,8 @@ for (split /\n/, $package) {
         $raw .= chr(hex($_));
     }
 }
-
 #print STDERR Spore::Utils::hexdump($raw);
-
-my $req = HTTP::Request->new(POST => 'http://127.0.0.1:8081/api/spore/hub/scanner', ["Content-Type" => "application/octet-stream"], $raw);
+my $req = HTTP::Request->new(POST => 'http://127.0.0.1:8081/api/spore/hub/scanner', ["Content-Type" => "application/octet-stream", "Accept" => "application/octet-stream"], $raw);
 my $res = $ua->request($req);
 
 print Dumper($res->content);
