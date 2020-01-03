@@ -65,6 +65,9 @@ const char* ssid_pwd(const char* ssid) {
   return 0;
 }
 
+#define BUZZER_PIN 15
+#include "sounds.h"
+
 char* _host     = "192.168.0.2";
 int   _port     = 8081;
 char* _url      = "/api/spore/hub/scanner";
@@ -383,9 +386,8 @@ int wifi_connect() {
 }
 
 void send_queue() {
-  tone(13, 20);
+  //toneQueue();
   _send_queue();
-  noTone(13);
 }
 
 void _send_queue() {
@@ -593,55 +595,6 @@ int rfid_req(const byte* req, byte* out) {
   }
   return len;
 }
-
-
-void toneOK() {
-  tone(13, 6000); delay(40);
-  tone(13, 12000); delay(30);
-  noTone(13);
-}
-
-void toneNO() {
-  tone(13, 30); delay(150);
-  noTone(13);
-}
-
-void toneTick() {
-  tone(13, 8000); delay(30);
-  noTone(13);
-}
-
-void toneTock() {
-  tone(13, 6000); delay(25);
-  noTone(13);
-}
-
-void tonePICK() {
-  tone(13, 500);  delay(50);
-  noTone(13);     delay(20);
-  tone(13, 500);  delay(50);
-  noTone(13);     delay(20);
-  tone(13, 500);  delay(50);
-  noTone(13);
-}
-
-void toneWAIT() {
-  tone(13, 3000);  delay(100);
-  tone(13, 500);  delay(200);
-  noTone(13);
-}
-
-void toneKO() {
-  tone(13, 2000);  delay(30);
-  tone(13, 250);  delay(50);
-  tone(13, 1500);  delay(30);
-  tone(13, 250);  delay(50);
-  tone(13, 1000);  delay(30);
-  tone(13, 250);  delay(50);
-  tone(13, 2000);  delay(30);
-  noTone(13);
-}
-
 
 void hex2str(const byte* data, int length) {
   for (int i=0; i<length; i++) {
