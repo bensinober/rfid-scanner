@@ -165,7 +165,7 @@ void setup() {
   }
   delay(1000);
   wifi_connect();
-  //toneOK();
+  toneOK();
 }
 
 long display_expire = 0;
@@ -209,7 +209,7 @@ void loop() {
   for (i=0; i<100; i++) {
     int r = rfid_req(inventory, out);
     //SERIALHEXDUMP(out, r);
-    if (r<8) break;
+    if (r<8) break; // Length below tag id, abort
 
     // current tag needs to be written
     if (memcmp(out+5, wid, 8)==0) {
@@ -218,7 +218,6 @@ void loop() {
     }
 
     Serial.print("RFID: "); hex2str(out+5, 8); Serial.println();
-
     // should I read the tag blocks?
     int must_read = 1;
     if (WiFi.status() != WL_CONNECTED) must_read++;
@@ -236,12 +235,12 @@ void loop() {
     }
     if (must_read) {
       queue_count++;
+      byte tag[8]; // tag placeholder
+      for (int j=0;j<9;j++) { tag[j] = out[5+j]; }
       memcpy(pos, out+5, 8); // rfid tag id
       pos[8] = 0; // flags TODO if button, send check-in
       pos += 9;
       int len = rfid_req(read_block, out);
-      //SERIALHEXDUMP(out, len);
-
       if (len>128) { // IGNORE
       } else if (len<4) { // IGNORE
       } else if (memcmp(out+4, "SHELF#", 6)==0) {
@@ -254,8 +253,13 @@ void loop() {
         shelf_expire = millis() + 1000*60;
         // TODO fetch more data, and search for SSID/PWD
         toneOK();
-      }
-      else {
+      } else if (out[4] == 0) {
+        Serial.println("Got empty tag, shelf lookup");
+        char tagHex[22];
+        sprintf(tagHex, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", tag[7], tag[6], tag[5], tag[4], tag[3], tag[2], tag[1], tag[0]);
+        _check_shelf(tagHex); // check if tag is a shelf loc
+        return;
+      } else {
         pos[0] = len-4; pos++;
         memcpy(pos, out+4, len-4); // skip first 4 bytes (len+frame+cmd)
         pos += len-4;
@@ -266,8 +270,7 @@ void loop() {
           toneTock();
         }
       }
-    } 
-    else { // only the tag id will be sent
+    } else { // only the tag id will be sent
       queue_count++;
       memcpy(pos, out+5, 8); // rfid tag id
       pos[8] = 0; // flags
@@ -388,112 +391,14 @@ int wifi_connect() {
 void send_queue() {
   //toneQueue();
   _send_queue();
+  _read_response();
 }
 
 void _send_queue() {
   long t0 = millis();
-  if (client.connected()) {
-    // don't block unless there is the first byte
-    if (!client.available()) {
-      SERIALDEBUG("nothing to read");
-      return;
-    }
-    SERIALDEBUG("READ");
-    // blocking now
-    String cmd = client.readStringUntil('\n');
-    SERIALDEBUG(cmd);
   
-    while(client.available()) {
-      String line = client.readStringUntil('\n');
-      SERIALDEBUG(line);
-      if (line.length()<2) break;
-    }
-
-    SERIALDEBUG("MSG: ");
-    String msg = client.readStringUntil('\n');
-    SERIALDEBUG(msg);
-
-    if (msg.equals("WRT")) {
-      toneWAIT();
-      int len = client.readStringUntil('\n').toInt();
-      SERIALDEBUG("RFID WRITE len: "+len);
-      memset(wid, 0, 256);
-      client.read(wid, len);
-      SERIALHEXDUMP(wid, len);
-                             // 0x00    0C    00    5F  E3 DB CF 19 00 00 07 E0  chk: 5A
-      byte reset_to_ready[] = { 0x00, 0x0C, 0x00, 0x5F, 1, 2, 3, 4, 5, 6, 7, 8 };
-      memcpy(reset_to_ready+4, wid, 8);
-      SERIALHEXDUMP(reset_to_ready, 12);
-      int l = rfid_req(reset_to_ready, out);
-      SERIALHEXDUMP(out, l);
-    }
-    else if (msg.equals("READ")) {
-      toneTock();
-      SERIALDEBUG("RFID READ");
-      // shift the list, and prepend the new id
-      memcpy(rid+8, rid, 8*(1-TAG_READ_SIZE));
-      client.read(rid, 8);
-
-      byte reset_to_ready[] = { 0x00, 0x0C, 0x00, 0x5F, 1,2,3,4,5,6,7,8 };
-      memcpy(reset_to_ready+4, rid, 8);
-      SERIALHEXDUMP(reset_to_ready, 12);
-      int l = rfid_req(reset_to_ready, out);
-      SERIALHEXDUMP(out, l);
-    }
-    else if (msg.equals("NOOP")) {
-      String barcode = client.readStringUntil('\n');
-      String author = client.readStringUntil('\n');
-      String title = client.readStringUntil('\n');
-      String cc = client.readStringUntil('\n');
-      String loc = client.readStringUntil('\n');
-
-      if (display_level<=0 && !barcode.equals("")) { // don't overwrite PICK or similar
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.setTextSize(1);
-        display.setTextColor(WHITE);
-        display.println(loc);
-        display.print(barcode);
-        display.print(" ");
-        display.println(cc);
-        display.println(author);
-        display.println(title);
-        display.display();
-        display_expire = millis()+5000;
-        display_level = 0;
-      }
-    }
-    else if (msg.equals("PICK")) {
-      String barcode = client.readStringUntil('\n');
-      String author = client.readStringUntil('\n');
-      String title = client.readStringUntil('\n');
-      String cc = client.readStringUntil('\n');
-      String loc = client.readStringUntil('\n');
-
-      Serial.println("PICK "+barcode);
-  
-      display.clearDisplay();
-      display.setCursor(0,0);
-      display.setTextSize(1);
-      display.setTextColor(WHITE);
-      //display.println(cc);
-      display.println(loc);
-      display.print(barcode);
-      display.print(" ");
-      display.println(cc);
-      display.println(author);
-      display.println(title);
-      display.display();
-      display_expire = millis()+5000;
-      display_level = 2;
-      
-      tonePICK();
-    } else {
-      Serial.println(String("UNKNOWN CMD: '")+msg+"'");
-    }
-    SERIALDEBUG("READ DONE");
-    client_work = 0;
-  } else if (pos > queue) {
+  client_work = 0;
+  if (pos > queue) {
     if (wifi_connect()==0) {
       SERIALDEBUG("Waiting for connection");
       return;
@@ -548,9 +453,151 @@ void _send_queue() {
     pos = queue;
     queue_count = 0;
     client_work = 1;
+    _read_response();
+  } else {
+    SERIALDEBUG("NOOP");
   }
-  else {
-    //SERIALDEBUG("NOOP");
+}
+
+void _check_shelf(const char* tag) {
+  String tagUrl = "/api/spore/locations/tags?rfid=";
+  tagUrl += tag;
+  SERIALDEBUG(tagUrl);
+  if (!client.connect(host(), port())) {
+    Serial.println(String("client.connect(")+host()+":"+port()+") failed");
+    toneKO();
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.println("server conn fail");
+    display.display();
+    delay(5*1000);
+    return;
+  }
+  client.print(String("GET ") + tagUrl + " HTTP/1.0\r\n" +
+                 "Host: " + hhost() + "\r\n" + 
+                 "Content-Type: application/octet-stream\r\n" +
+                 "Accept: application/octet-stream\r\n" +
+                 "Connection: close\r\n\r\n");
+  _read_response();
+}
+
+void _read_response() {
+  if (client.connected() || client.available()) {
+    SERIALDEBUG("READ");
+    // blocking now
+    String cmd = client.readStringUntil('\n');
+    SERIALDEBUG(cmd);
+  
+    while(client.available()) {
+      String line = client.readStringUntil('\n');
+      SERIALDEBUG(line);
+      if (line.length()<2) break;
+    }
+
+    SERIALDEBUG("MSG: ");
+    String msg = client.readStringUntil('\n');
+    SERIALDEBUG(msg);
+
+    if (msg.equals("WRT")) {
+      toneWAIT();
+      int len = client.readStringUntil('\n').toInt();
+      SERIALDEBUG("RFID WRITE len: "+len);
+      memset(wid, 0, 256);
+      client.read(wid, len);
+      SERIALHEXDUMP(wid, len);
+                             // 0x00    0C    00    5F  E3 DB CF 19 00 00 07 E0  chk: 5A
+      byte reset_to_ready[] = { 0x00, 0x0C, 0x00, 0x5F, 1, 2, 3, 4, 5, 6, 7, 8 };
+      memcpy(reset_to_ready+4, wid, 8);
+      SERIALHEXDUMP(reset_to_ready, 12);
+      int l = rfid_req(reset_to_ready, out);
+      SERIALHEXDUMP(out, l);
+    } else if (msg.equals("READ")) {
+      toneTock();
+      SERIALDEBUG("RFID READ");
+      // shift the list, and prepend the new id
+      memcpy(rid+8, rid, 8*(1-TAG_READ_SIZE));
+      client.read(rid, 8);
+
+      byte reset_to_ready[] = { 0x00, 0x0C, 0x00, 0x5F, 1,2,3,4,5,6,7,8 };
+      memcpy(reset_to_ready+4, rid, 8);
+      SERIALHEXDUMP(reset_to_ready, 12);
+      int l = rfid_req(reset_to_ready, out);
+      SERIALHEXDUMP(out, l);
+    } else if (msg.equals("NOOP")) {
+      String barcode = client.readStringUntil('\n');
+      String author = client.readStringUntil('\n');
+      String title = client.readStringUntil('\n');
+      String cc = client.readStringUntil('\n');
+      String loc = client.readStringUntil('\n');
+
+      if (display_level<=0 && !barcode.equals("")) { // don't overwrite PICK or similar
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.setTextSize(1);
+        display.setTextColor(WHITE);
+        display.println(loc);
+        display.print(barcode);
+        display.print(" ");
+        display.println(cc);
+        display.println(author);
+        display.println(title);
+        display.display();
+        display_expire = millis()+5000;
+        display_level = 0;
+      }
+    } else if (msg.equals("PICK")) {
+      String barcode = client.readStringUntil('\n');
+      String author = client.readStringUntil('\n');
+      String title = client.readStringUntil('\n');
+      String cc = client.readStringUntil('\n');
+      String loc = client.readStringUntil('\n');
+
+      Serial.println("PICK "+barcode);
+  
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.setTextSize(1);
+      display.setTextColor(WHITE);
+      //display.println(cc);
+      display.println(loc);
+      display.print(barcode);
+      display.print(" ");
+      display.println(cc);
+      display.println(author);
+      display.println(title);
+      display.display();
+      display_expire = millis()+5000;
+      display_level = 2;
+      
+      tonePICK();
+    } else if (msg.equals("LOC")) {
+      String type = client.readStringUntil('\n');
+      String shlf = client.readStringUntil('\n');
+      String loc = client.readStringUntil('\n');
+
+      Serial.println("LOC "+loc);
+  
+      display.clearDisplay();
+      display.setCursor(0,0);
+      display.setTextSize(1);
+      display.setTextColor(WHITE);
+      display.print("type ");
+      display.println(type);
+      display.println(shlf);
+      display.println(loc);
+      display.display();
+      display_expire = millis()+5000;
+      display_level = 2;
+      shlf.toCharArray(shelf, shlf.length()+1);
+    } else {
+      Serial.println(String("UNKNOWN CMD: '")+msg+"'");
+    }
+    SERIALDEBUG("READ DONE");
+    client.stop();
+  } else {
+    SERIALDEBUG("nothing to read");
   }
 }
 
