@@ -110,7 +110,7 @@ byte* wid = (byte*)malloc(256);
 byte* rid = (byte*)malloc(8*TAG_READ_SIZE);
 
 // shelf
-char* shelf = (char*)malloc(32);
+char* shelf = (char*)malloc(80);
 long shelf_expire = 0;
 
 void ICACHE_RAM_ATTR btnA() {
@@ -178,7 +178,7 @@ void loop() {
   }
   long t0 = millis();
   if (shelf_expire && t0>shelf_expire) {
-    memset(shelf, 0, 32);
+    memset(shelf, 0, 80);
     shelf_expire = 0;
     toneNO();
   }
@@ -437,7 +437,7 @@ void _send_queue() {
     _queue[0] = 0x42;
     _queue[1] = 0x42;
     memcpy(_queue+2, mac, 6); // device mac address
-    memcpy(_queue+8, shelf, 32); // rfid tag id
+    memcpy(_queue+8, shelf, 80); // rfid tag id
     //Serial.println("send");
     //SERIALHEXDUMP(_queue, 40+len);
 
